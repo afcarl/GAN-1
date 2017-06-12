@@ -29,10 +29,19 @@ real samples:
 
 ![real](logs/real_sample.png)
 
+### Result of ACGAN
+
+MNIST
+
+7 epoch:
+
+![result_acgan](logs/fake_sample_epoch_007.png)
+
 -------
 1. Generative Adversarial Nets [GANs]:(https://arxiv.org/abs/1406.2661)
 
 2. Unsupervised Representation Learning with Deep Convolutional Generative Adversarial Networks [DCGAN]:(https://arxiv.org/abs/1511.06434)
 
+3. Conditional Image Synthesis With Auxiliary Classifier GANs [ACGAN]:（https://arxiv.org/pdf/1610.09585.pdf）
 ## Author
 Chao Wang
