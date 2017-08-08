@@ -1,6 +1,7 @@
 from __future__ import print_function
 import argparse
 import random
+import numpy as np
 
 #torch framework
 import torch
@@ -16,19 +17,19 @@ import models.dcgan as dcgan
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataroot', required=True)
 parser.add_argument('--cuda', action='store_true', help='cuda enable')
-parser.add_argument('--batchsize', type=int, default=32)
-parser.add_argument('--scaleSize', type=int, default=128, help='scale image to this size')
-parser.add_argument('--fineSize', type=int, default=128, help='crop size')
-parser.add_argument('--nz', type=int, default=100)
-parser.add_argument('--ngf', type=int, default=128, help='generator filters in first conv layer')
-parser.add_argument('--ndf', type=int, default=128, help='discriminator filters in first conv layer')
+parser.add_argument('--batchSize', type=int, default=16)
+parser.add_argument('--scaleSize', type=int, default=64, help='scale image to this size')
+parser.add_argument('--fineSize', type=int, default=64, help='crop size')
+parser.add_argument('--nz', type=int, default=64)
+parser.add_argument('--ngf', type=int, default=64, help='generator filters in first conv layer')
+parser.add_argument('--ndf', type=int, default=64, help='discriminator filters in first conv layer')
 parser.add_argument('--epoch', type=int, default=10000, help='num of training epoch')
 parser.add_argument('--lr', type=float, default=0.0001)
 parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam')
 parser.add_argument('--lr_decay', type=int, default=1000, help='decay lr this epoch')
 parser.add_argument('--lambda_k', type=float, default=0.001, help='learning rate fo k')
 parser.add_argument('--gamma', type=float, default=0.5, help='balance between D and G')
-parser.add_argument('--hidden_size', type=int, default=128, help='bottleneck dimension of Discriminator')
+parser.add_argument('--hidden_size', type=int, default=64, help='bottleneck dimension of Discriminator')
 parser.add_argument('--experiment', default=None, help='where to store samples and models')
 
 opt = parser.parse_args()
@@ -44,11 +45,11 @@ dataset = datasets.ImageFolder(root=opt.dataroot,
 		           transform=transforms.Compose([
 			       transforms.Scale(opt.scaleSize),
 			       transforms.CenterCrop(opt.fineSize),
-                               transforms.ToTensor(),
-                               transforms.Normalize((0.5, 0.5, 0.5),(0.5, 0.5, 0.5))
+                               transforms.ToTensor()
+                               #transforms.Normalize((0.5, 0.5, 0.5),(0.5, 0.5, 0.5))
                            ])
 					)
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchsize,
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batchSize,
                                          shuffle=True, num_workers=int(2))
 
 
@@ -60,7 +61,7 @@ nz = opt.nz
 nc = 3
 
 netG = dcgan.Generator(nc, ngf, nz, opt.fineSize)
-netD = dcgan.Discriminator(nc, ndf, opt.hiddem_size, opt.fineSize)
+netD = dcgan.Discriminator(nc, ndf, opt.hidden_size, opt.fineSize)
 if(opt.cuda):
     netG.cuda()
     netD.cuda()
@@ -74,7 +75,7 @@ criterion = nn.L1Loss()
 ####### Variables ##########
 noise = torch.FloatTensor(opt.batchSize, opt.nz, 1, 1)
 real = torch.FloatTensor(opt.batchSize, nc, opt.fineSize, opt.fineSize)
-label = torch.FlotTensor(1)
+label = torch.FloatTensor(1)
 
 noise = Variable(noise)
 real = Variable(real)
@@ -100,7 +101,7 @@ for epoch in range(1, opt.epoch+1):
     data_iter = iter(dataloader)
     i = 0
     while i < len(dataloader):
-        images = data_iter()
+        images = data_iter.next()
         i += 1
         gan_iterations += 1
         #### trainining D
@@ -133,64 +134,18 @@ for epoch in range(1, opt.epoch+1):
         k = min(max(k + opt.lambda_k * balance, 0), 1)
         measure = errD_real.data[0] + np.abs(balance)
 
-        print('[%d/%d] Loss_D: %.4f Loss_G: %.4f Measure: %.4f'
-                  % (epoch, opt.epoch, errD.data[0], errG.data[0], measure))
+        print('[%d/%d] Loss_D: %.4f Loss_G: %.4f Measure: %.4f K: %.4f learning rate: %.8f'
+                  % (epoch, opt.epoch, errD.data[0], errG.data[0], measure, k, optimizerD.param_groups[0]['lr']))
        
         #### lr decay
-        optimizerD = adjust_learning_rate(optimizerD, gan_iteration)
-        optimizerG = adjust_learning_rate(optimizerG, gan_iteration)
+        optimizerD = adjust_learning_rate(optimizerD, gan_iterations)
+        optimizerG = adjust_learning_rate(optimizerG, gan_iterations)
         #### visualization
-        if(gan_iteration % 1000 == 0):
+        if(gan_iterations % 1000 == 0):
             vutils.save_image(fake.data,
-                        '%s/fake_samples_iteration_%03d.png' % (opt.experiment, gan_iteration))
+                        '%s/fake_samples_iteration_%03d.png' % (opt.experiment, gan_iterations))
             vutils.save_image(real.data,
-              '%s/real_samples_iteration_%03d.png' % (opt.experiment, gan_iteration))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-   
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+              '%s/real_samples_iteration_%03d.png' % (opt.experiment, gan_iterations))
+    if(epoch % 1000 == 0):
+        torch.save(netG.state_dict(), '%s/netG_%d.pth' % (opt.experiment, gan_iterations))
+        torch.save(netD.state_dict(), '%s/netD_%d.pth' % (opt.experiment, gan_iterations))
