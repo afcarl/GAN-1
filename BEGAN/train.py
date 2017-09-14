@@ -17,6 +17,7 @@ import models.dcgan as dcgan
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataroot', required=True)
 parser.add_argument('--cuda', action='store_true', help='cuda enable')
+parser.add_argument('--ngpu', default=1, help='number of gpus to use' )
 parser.add_argument('--batchSize', type=int, default=16)
 parser.add_argument('--scaleSize', type=int, default=64, help='scale image to this size')
 parser.add_argument('--fineSize', type=int, default=64, help='crop size')
